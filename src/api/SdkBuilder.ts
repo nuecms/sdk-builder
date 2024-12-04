@@ -52,7 +52,15 @@ export class SdkBuilder {
   }
 
   // Register registerEndpoint shortcut methods for GET and POST requests
-  r(name: string, path: string, method?: string): void {
+  r(name: string, path: string | Function, method?: string): void {
+    if (typeof path === 'function') {
+      (this as any)['_' + name] = path;
+      (this as any)[name] = async (callback: any) => {
+        const res = await this['_' + name](this.config);
+        callback(res);
+      }
+      return;
+    }
     this.registerEndpoint(name, path, method);
   }
 
@@ -93,8 +101,10 @@ export class SdkBuilder {
   request(endpointName: string, body: Record<string, any> = {}): Promise<any> {
     return this.callApi(endpointName, body);
   }
-  auth(callback: (token: string) => void): void {
-    callback(this.config)
+  auth(callback: (config: any) => void): void {
+    // callback(this.config)
+    this._auth = callback;
+    this._auth(this.config);
   }
   // Method to handle API call execution
   private async callApi(endpointName: string, body: Record<string, any> = {}) {

@@ -1,8 +1,6 @@
 import { describe, it, beforeEach, expect, vi } from 'vitest';
-import { sdkBuilder } from '../../src/api/SdkBuilder';
-import { RedisCacheProvider } from '../../src/cache/redisProvider';
+import { SdkBuilder } from '../../src/api/SdkBuilder';
 import { BrowserCacheProvider } from '../../src/cache/browserProvider';
-import Redis from 'ioredis';
 
 // Mock the response for WeChat API calls
 vi.mock('cross-fetch', async () => {
@@ -13,17 +11,7 @@ vi.mock('cross-fetch', async () => {
   };
 });
 
-// Extended Redis interface to include a delete method
-interface ExtendedRedis extends Redis {
-  delete(key: string): Promise<void>;
-}
 
-
-const mockRedis: Partial<ExtendedRedis> = {
-  get: vi.fn().mockResolvedValue('cachedValue'),
-  set: vi.fn().mockResolvedValue('OK'),
-  del: vi.fn().mockResolvedValue(undefined), // Corrected method to `del` for Redis
-};
 
 describe('WeChat SDK Builder Tests', () => {
   let weChatSdk: SdkBuilder;
@@ -38,41 +26,6 @@ describe('WeChat SDK Builder Tests', () => {
     });
 
     globalThis.fetch = mockFetch; // Use mockFetch globally
-
-    weChatSdk = sdkBuilder({
-      baseUrl: 'https://api.weixin.qq.com',
-      defaultHeaders: { 'Content-Type': 'application/json' },
-      timeout: 10000,
-      responseFormat: 'json',
-      cacheProvider: new RedisCacheProvider(mockRedis as ExtendedRedis),
-      placeholders: {
-        access_token: '{access_token}',
-      },
-      config: {
-        appId: 'your-app-id',
-        appSecret: 'your-app-secret',
-      }
-    });
-
-    // Register API endpoints
-    weChatSdk.r('getAccessToken', '/cgi-bin/token', 'GET');
-    weChatSdk.r('sendTemplateMessage', '/cgi-bin/message/template/send');
-    weChatSdk.r('getUserInfo', '/cgi-bin/user/info');
-
-    // Register the auth method
-    weChatSdk.auth(async (config: any) => {
-      const appId = config.appId;
-      const appSecret = config.appSecret
-      const cacheKey = `wechat_access_token_${appId}`;
-      const cachedToken = await weChatSdk.cacheProvider?.get(cacheKey);
-      if (cachedToken) {
-        return cachedToken.value;
-      }
-      const response = await weChatSdk.request('getAccessToken', { appid: appId, secret: appSecret, grant_type: 'client_credential' });
-      const accessToken = response.access_token;
-      const expiresIn = response.expires_in || 7200;
-      await weChatSdk.cacheProvider?.set(cacheKey, accessToken, 'json', expiresIn);
-    })
   });
 
   it('should fetch access token and return it', async () => {
