@@ -6,7 +6,7 @@ interface SdkBuilderConfig {
   baseUrl: string;
   defaultHeaders?: Record<string, string>;
   timeout?: number;
-  responseFormat?: 'json' | 'xml' | 'text';
+  responseFormat?: 'json' | 'xml' | 'text' | 'blob';
   cacheProvider: CacheProvider;
   customResponseTransformer?: ResponseTransformer;
   placeholders?: Record<string, string>;
@@ -22,7 +22,7 @@ export class SdkBuilder {
   private baseUrl: string;
   private defaultHeaders: Record<string, string>;
   private timeout: number;
-  private responseFormat: 'json' | 'xml' | 'text';
+  private responseFormat: 'json' | 'xml' | 'text' | 'blob';
   public cacheProvider: CacheProvider;
   private customResponseTransformer?: ResponseTransformer;
   private endpoints: Record<string, EndpointConfig>;
@@ -66,7 +66,7 @@ export class SdkBuilder {
 
 
   // Resolves dynamic placeholders in paths (e.g., {access_token} or {openid})
-  private async resolvePath(path: string, body: Record<string, any> = {}, method: string): Promise<string> {
+  private async resolvePath(path: string, body: Record<string, any> = {}, method: string, params: Record<string, any> = {}): Promise<string> {
     let url = path;
 
     let origialParams = { ...body };
@@ -83,13 +83,15 @@ export class SdkBuilder {
         holders[key] = holders[key].replace(`{${key}}`, origialParams[value]);
       }
     }
-    let params = { ...holders };
+    let mixParams = { };
     if (method === 'GET') {
-      params = { ...holders, ...origialParams };
+      mixParams = { ...holders, ...origialParams };
+    } else {
+      mixParams = { ...holders, ...params };
     }
 
     // If the request is a GET request, append body as URL parameters (query parameters)
-    if (Object.keys(params).length > 0) {
+    if (Object.keys(mixParams).length > 0) {
       const queryParams = new URLSearchParams(origialParams).toString();
       if (queryParams) {
         url += `?${queryParams}`;
@@ -98,8 +100,8 @@ export class SdkBuilder {
     return url;
   }
 
-  request(endpointName: string, body: Record<string, any> = {}): Promise<any> {
-    return this.callApi(endpointName, body);
+  request(endpointName: string, body: Record<string, any> = {}, params?: Record<string, any>): Promise<any> {
+    return this.callApi(endpointName, body, params);
   }
   auth(callback: (config: any) => void): void {
     // callback(this.config)
@@ -107,41 +109,58 @@ export class SdkBuilder {
     this._auth(this.config);
   }
   // Method to handle API call execution
-  private async callApi(endpointName: string, body: Record<string, any> = {}) {
+  private async callApi(endpointName: string, body: Record<string, any> = {}, params: Record<string, any> = {}): Promise<any> {
     const endpoint = this.endpoints[endpointName];
     if (!endpoint) {
       throw new Error(`Endpoint ${endpointName} not registered`);
     }
 
     // Merge default headers with headers from body (if provided)
-    const mergedHeaders = { ...this.defaultHeaders };
+    const headers = { ...this.defaultHeaders };
 
-    const subUrl = await this.resolvePath(endpoint.path, body, endpoint.method);
+    const subUrl = await this.resolvePath(endpoint.path, body, endpoint.method, params);
 
     // Resolve URL path (handling GET query params and dynamic placeholders)
     const url = this.baseUrl + subUrl
 
     const requestOptions: RequestInit = {
       method: endpoint.method,
-      headers: mergedHeaders,
+      headers: headers,
       body: endpoint.method === 'POST' ? JSON.stringify(body) : undefined, // POST: send body as JSON
     };
 
     // If GET request, we don't need to include the body in the requestOptions; the body is part of the URL.
     if (endpoint.method === 'GET') {
       delete requestOptions.body; // Remove body for GET requests
+    } else if (body instanceof FormData) {
+      // Handle FormData for file uploads
+      requestOptions.body = body;
+      delete headers['Content-Type']; // Allow FormData to set its own Content-Type
+    } else {
+      requestOptions.body = JSON.stringify(body);
+      // Set Content-Type for non-GET requests
+
+      headers['Content-Type'] = 'application/json';
     }
+
+    requestOptions.headers = headers
+
 
     // Perform the fetch call
     const response = await fetch(url, requestOptions);
-
     let data;
-    if (this.responseFormat === 'json') {
-      data = await response.json();
-    } else if (this.responseFormat === 'xml') {
-      data = await response.text();
-    } else {
-      data = await response.text();
+    switch (this.responseFormat) {
+      case 'json':
+        data = await response.json();
+        break;
+      case 'text':
+        data = await response.text();
+        break;
+      case 'blob':
+        data = await response.blob();
+        break;
+      default:
+        throw new Error('Unsupported response format.');
     }
 
     return this.customResponseTransformer

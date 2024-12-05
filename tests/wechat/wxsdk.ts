@@ -89,9 +89,9 @@ weChatSdk.r('auth', async (config: any) => {
     return cachedToken.value;
   }
   const response = await weChatSdk.request('getAccessToken', { appid: appId, secret: appSecret, grant_type: 'client_credential' });
-  const accessToken = response.access_token;
+  // const accessToken = response.access_token;
   const expiresIn = response.expires_in || 7200;
-  await weChatSdk.cacheProvider?.set(cacheKey, accessToken, 'json', expiresIn);
+  await weChatSdk.cacheProvider?.set(cacheKey, response, 'json', expiresIn);
   return response;
 })
 
