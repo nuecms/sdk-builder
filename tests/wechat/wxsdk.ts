@@ -1,12 +1,9 @@
-import { sdkBuilder } from '../../src/api/SdkBuilder';
+import { sdkBuilder } from '../../src/lib/SdkBuilder';
 import { RedisCacheProvider } from '../../src/cache/redisProvider';
 import Redis from 'ioredis';
 
 const weChatSdk = sdkBuilder({
   baseUrl: 'https://api.weixin.qq.com',
-  defaultHeaders: { 'Content-Type': 'application/json' },
-  timeout: 10000,
-  responseFormat: 'json',
   cacheProvider: new RedisCacheProvider(new Redis()),
   placeholders: {
     access_token: '{access_token}',

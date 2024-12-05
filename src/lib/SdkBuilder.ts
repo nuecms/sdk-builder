@@ -2,12 +2,13 @@ import { CacheProvider } from '../cache/cacheProvider';
 import { ResponseTransformer } from '../transformers/responseTransformer';
 
 interface SdkBuilderConfig {
-  retryDelay: number;
-  maxRetries: number;
+  retryDelay?: number;
+  maxRetries?: number;
   method?: string;
   baseUrl: string;
   defaultHeaders?: Record<string, string>;
   timeout?: number;
+  type?: 'json' | 'text' | 'blob';
   responseFormat?: 'json' | 'text' | 'blob';
   cacheProvider: CacheProvider;
   customResponseTransformer?: ResponseTransformer;
@@ -33,17 +34,21 @@ export class SdkBuilder {
 
   constructor(config: SdkBuilderConfig) {
     this.baseUrl = config.baseUrl;
-    this.defaultHeaders = config.defaultHeaders || {};
+    this.type = config.type || 'json';
     this.timeout = config.timeout || 5000;
     this.maxRetries = config.maxRetries || 3; // Default to 3 retries
     this.retryDelay = config.retryDelay || 500; // Default to 500ms delay between retries
     this.responseFormat = config.responseFormat || 'json'; // Default to 'json'
+    this.defaultHeaders = config.defaultHeaders || {};
     this.cacheProvider = config.cacheProvider;
     this.method = config.method || 'POST';
     this.customResponseTransformer = config.customResponseTransformer;
     this.placeholders = config.placeholders || {};
     this.config = config.config || {};
     this.endpoints = {};
+    if (this.type === 'json') {
+      this.defaultHeaders['Content-Type'] = 'application/json';
+    }
   }
 
   // Generic method to register any endpoint

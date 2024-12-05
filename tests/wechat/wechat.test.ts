@@ -1,5 +1,5 @@
 import { describe, it, beforeEach, expect, vi } from 'vitest';
-import { SdkBuilder } from '../../src/api/SdkBuilder';
+import { SdkBuilder } from '../../src/lib/SdkBuilder';
 import { BrowserCacheProvider } from '../../src/cache/browserProvider';
 
 // Mock the response for WeChat API calls
