@@ -2,11 +2,13 @@ import { CacheProvider } from '../cache/cacheProvider';
 import { ResponseTransformer } from '../transformers/responseTransformer';
 
 interface SdkBuilderConfig {
+  retryDelay: number;
+  maxRetries: number;
   method?: string;
   baseUrl: string;
   defaultHeaders?: Record<string, string>;
   timeout?: number;
-  responseFormat?: 'json' | 'xml' | 'text' | 'blob';
+  responseFormat?: 'json' | 'text' | 'blob';
   cacheProvider: CacheProvider;
   customResponseTransformer?: ResponseTransformer;
   placeholders?: Record<string, string>;
@@ -22,7 +24,7 @@ export class SdkBuilder {
   private baseUrl: string;
   private defaultHeaders: Record<string, string>;
   private timeout: number;
-  private responseFormat: 'json' | 'xml' | 'text' | 'blob';
+  private responseFormat: 'json' | 'text' | 'blob';
   public cacheProvider: CacheProvider;
   private customResponseTransformer?: ResponseTransformer;
   private endpoints: Record<string, EndpointConfig>;
@@ -33,6 +35,8 @@ export class SdkBuilder {
     this.baseUrl = config.baseUrl;
     this.defaultHeaders = config.defaultHeaders || {};
     this.timeout = config.timeout || 5000;
+    this.maxRetries = config.maxRetries || 3; // Default to 3 retries
+    this.retryDelay = config.retryDelay || 500; // Default to 500ms delay between retries
     this.responseFormat = config.responseFormat || 'json'; // Default to 'json'
     this.cacheProvider = config.cacheProvider;
     this.method = config.method || 'POST';
@@ -83,7 +87,7 @@ export class SdkBuilder {
         holders[key] = holders[key].replace(`{${key}}`, origialParams[value]);
       }
     }
-    let mixParams = { };
+    let mixParams = {};
     if (method === 'GET') {
       mixParams = { ...holders, ...origialParams };
     } else {
@@ -145,27 +149,65 @@ export class SdkBuilder {
 
     requestOptions.headers = headers
 
+    // Retry logic
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+        requestOptions.signal = controller.signal;
 
-    // Perform the fetch call
-    const response = await fetch(url, requestOptions);
-    let data;
-    switch (this.responseFormat) {
-      case 'json':
-        data = await response.json();
-        break;
-      case 'text':
-        data = await response.text();
-        break;
-      case 'blob':
-        data = await response.blob();
-        break;
-      default:
-        throw new Error('Unsupported response format.');
+        const response = await fetch(url.toString(), requestOptions);
+
+        clearTimeout(timeoutId); // Clear the timeout if the request succeeds
+
+        // Check for non-2xx responses
+        if (!response.ok) {
+          if (response.status >= 500 && attempt < this.maxRetries) {
+            await this.delay(this.retryDelay); // Retry on server errors
+            continue;
+          }
+          throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+        }
+
+        // Handle response according to the specified format
+        let responseData;
+        switch (this.responseFormat) {
+          case 'json':
+            responseData = await response.json();
+            break;
+          case 'text':
+            responseData = await response.text();
+            break;
+          case 'blob':
+            responseData = await response.blob();
+            break;
+          default:
+            throw new Error('Unsupported response format.');
+        }
+
+        // Transform response if customResponseTransformer is provided
+        if (this.customResponseTransformer) {
+          responseData = this.customResponseTransformer(responseData, this.responseFormat);
+        }
+
+        return responseData;
+      } catch (error) {
+
+        if (attempt >= this.maxRetries) {
+          throw new Error(
+            `Request failed after ${this.maxRetries + 1} attempts: ${(error as Error).message}`
+          );
+        }
+        if ((error as Error).name === 'AbortError') {
+          throw new Error(`Request timed out after ${this.timeout}ms`);
+        }
+        await this.delay(this.retryDelay); // Wait before retrying
+      }
     }
+  }
 
-    return this.customResponseTransformer
-      ? this.customResponseTransformer(data, this.responseFormat)
-      : data;
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
