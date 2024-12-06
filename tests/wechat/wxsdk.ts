@@ -2,7 +2,7 @@ import { sdkBuilder } from '../../src/lib/SdkBuilder';
 import { RedisCacheProvider } from '../../src/cache/redisProvider';
 import Redis from 'ioredis';
 
-const weChatSdk = sdkBuilder({
+const wechatSDK = sdkBuilder({
   baseUrl: 'https://api.weixin.qq.com',
   cacheProvider: new RedisCacheProvider(new Redis()),
   placeholders: {
@@ -13,7 +13,6 @@ const weChatSdk = sdkBuilder({
     appSecret: '282323a19761e2baba5e5b24ad60fa0f',
   }
 });
-
 const routes = {
   'getAccessToken': 'GET /cgi-bin/token', // Get access token
   'getJsapiTicket': 'GET /cgi-bin/ticket/getticket', // Get JS API ticket
@@ -72,28 +71,37 @@ const routes = {
 };
 for (const [key, value] of Object.entries(routes)) {
   const [method, path] = value.split(' ');
-  weChatSdk.r(key, path, method);
+  wechatSDK.r(key, path, method);
 }
 
 
+// Register endpoints with full type support
+
 // Register the auth method
-weChatSdk.r('auth', async (config: any) => {
+wechatSDK.r('authenticate', async (config) => {
   const appId = config.appId;
   const appSecret = config.appSecret
   const cacheKey = `wechat_access_token_${appId}`;
-  const cachedToken = await weChatSdk.cacheProvider?.get(cacheKey);
+  const cachedToken = await wechatSDK.cacheProvider?.get(cacheKey);
   if (cachedToken) {
     return cachedToken.value;
   }
-  const response = await weChatSdk.request('getAccessToken', { appid: appId, secret: appSecret, grant_type: 'client_credential' });
+  const response = await wechatSDK.getAccessToken({ appid: appId, secret: appSecret, grant_type: 'client_credential' });
   // const accessToken = response.access_token;
   const expiresIn = response.expires_in || 7200;
-  await weChatSdk.cacheProvider?.set(cacheKey, response, 'json', expiresIn);
-  return response;
+  await wechatSDK.cacheProvider?.set(cacheKey, response, 'json', expiresIn);
+  return {
+    access_token: response.access_token,
+  };
 })
 
+if (wechatSDK.authenticate) {
+  wechatSDK.authenticate();
+}
 
 
-export { weChatSdk, routes };
+
+
+export { wechatSDK, routes };
 
 

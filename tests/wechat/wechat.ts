@@ -1,7 +1,7 @@
 import http, { IncomingMessage, ServerResponse } from 'http';
 import crypto from 'crypto';
 import { URL } from 'url';
-import { weChatSdk } from './wxsdk';
+import { wechatSDK } from './wxsdk';
 
 // Helper function to compute SHA-1 hash
 function sha1(str: string): string {
@@ -34,7 +34,7 @@ const routes = {
       }
   },
   '/cgi-bin/token': (req, res)=> {
-    weChatSdk.auth(async (response: any) => {
+    wechatSDK.auth(async (response: any) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(response));
     })

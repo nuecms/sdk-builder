@@ -31,12 +31,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-repo/sdk-builder.git"
+    "url": "https://github.com/nuecms/sdk-builder.git"
   },
   "bugs": {
-    "url": "https://github.com/your-repo/sdk-builder/issues"
+    "url": "https://github.com/nuecms/sdk-builder/issues"
   },
-  "homepage": "https://github.com/your-repo/sdk-builder#readme",
+  "homepage": "https://github.com/nuecms/sdk-builder#readme",
   "devDependencies": {
     "@types/node": "^22.10.1",
     "eslint": "^9.16.0",
