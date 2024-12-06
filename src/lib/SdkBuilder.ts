@@ -23,6 +23,26 @@ interface EndpointConfig {
 }
 
 type EndpointFunction<Params = any, Response = any> = (params: Params) => Promise<Response>;
+
+export const defaultConfig = {
+  defaultHeaders: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 5000,
+  type: 'json',
+  responseFormat: 'json' as const,
+  maxRetries: 3,
+  retryDelay: 500,
+  method: 'POST',
+  config: {},
+  placeholders: {},
+  authCheckStatus: (status: number) => status === 401,
+};
+
+export const updateDefaultConfig = (config: SdkBuilderConfig): void => {
+  Object.assign(defaultConfig, config);
+}
+
 export class SdkBuilder<
   Endpoints extends Record<string, EndpointFunction<any, any>> = {}
 > {
@@ -43,23 +63,21 @@ export class SdkBuilder<
   authCheckStatus: (status: number, response?: object) => boolean;
 
   constructor(config: SdkBuilderConfig) {
-    this.baseUrl = config.baseUrl;
-    this.type = config.type || 'json';
-    this.timeout = config.timeout || 5000;
-    this.maxRetries = config.maxRetries || 3;
-    this.retryDelay = config.retryDelay || 500;
-    this.responseFormat = config.responseFormat || 'json';
+    this.baseUrl = config.baseUrl || '';
+    this.type = config.type ?? defaultConfig.type;
+    this.timeout = config.timeout || defaultConfig.timeout;
+    this.maxRetries = config.maxRetries || defaultConfig.maxRetries;
+    this.retryDelay = config.retryDelay || defaultConfig.retryDelay;
+    this.responseFormat = config.responseFormat  || defaultConfig.responseFormat;
     this.defaultHeaders = config.defaultHeaders || {};
-    this.cacheProvider = config.cacheProvider;
-    this.method = config.method || 'POST';
+    this.cacheProvider = config.cacheProvider as CacheProvider;
+    this.method = config.method || defaultConfig.method;
     this.customResponseTransformer = config.customResponseTransformer;
-    this.authCheckStatus = config.authCheckStatus || function (status) {
-      return status === 401; // default
-    };
-    this.placeholders = config.placeholders || {};
-    this.config = config.config || {};
-    this.endpoints = {};
+    this.authCheckStatus = config.authCheckStatus || defaultConfig.authCheckStatus;
+    this.placeholders = config.placeholders || defaultConfig.placeholders;
+    this.config = config.config || defaultConfig.config;
 
+    this.endpoints = {};
     if (this.type === 'json') {
       this.defaultHeaders['Content-Type'] = 'application/json';
     }
@@ -102,7 +120,6 @@ export class SdkBuilder<
     this.config = { ...this.config, ...config };
   }
 
-
   // Handle authentication errors
   private async handleAuthError(endpointName: string, body: Record<string, any>, params: Record<string, any>) {
     if (this.authenticate) {
@@ -118,7 +135,7 @@ export class SdkBuilder<
     }
     throw new Error('Authentication error and no authentication hook provided');
   }
-
+  // Call the API with retries and timeouts
   private async callApi<Params extends Record<string, any>, Response>(
     endpointName: string,
     body: Params,
@@ -206,7 +223,7 @@ export class SdkBuilder<
       }
     }
   }
-
+  // Resolves placeholders in the headers with values from the config or body
   private async resolveHeaders(headers: Record<string, string>, body: Record<string, any>): Promise<Record<string, string>> {
     const resolvedHeaders = { ...headers };
     for (const [key, value] of Object.entries(resolvedHeaders)) {
@@ -215,6 +232,7 @@ export class SdkBuilder<
     return resolvedHeaders;
   }
 
+  // Resolves placeholders in the path with values from the config or body
   private async resolvePath(
     path: string,
     body: Record<string, any> = {},
@@ -250,8 +268,7 @@ export class SdkBuilder<
     }
     return url;
   }
-
-
+  // Delay function for retries
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }

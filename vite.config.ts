@@ -24,7 +24,7 @@ export default defineConfig({
         },
       },
     },
-    sourcemap: true,                           // Enable source maps for debugging
+    sourcemap: false,                           // Enable source maps for debugging
     emptyOutDir: true,                         // Clean output directory before building
   },
   resolve: {
