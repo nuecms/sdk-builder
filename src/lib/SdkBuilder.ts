@@ -59,7 +59,7 @@ export class SdkBuilder<
   private retryDelay: number;
   private method: string;
   public cacheProvider: CacheProvider;
-  public authenticate?: () => Promise<Record<string, string>>;
+  public authenticate!: () => Promise<Record<string, string>>;
   authCheckStatus: (status: number, response?: object) => boolean;
 
   constructor(config: SdkBuilderConfig) {

@@ -33,11 +33,15 @@ const routes = {
         res.end('Token validation failed');
       }
   },
-  '/cgi-bin/token': (req, res)=> {
-    wechatSDK.auth(async (response: any) => {
+  '/cgi-bin/token': async (req, res)=> {
+    try {
+      const response = await wechatSDK.authenticate();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(response));
-    })
+    } catch (error) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Internal Server Error');
+    }
   }
 }
 
