@@ -1,7 +1,5 @@
 # **SDK Builder**
 
-> WIP: This project is under active development and not yet ready for production use.
-
 An advanced, modular SDK Builder for Node.js applications that simplifies API client creation. Supports dynamic endpoints, caching, custom response handling, and more — fully written in TypeScript for type safety and developer-friendly integration.
 
 ---
