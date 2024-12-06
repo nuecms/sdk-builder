@@ -61,7 +61,7 @@ import { SdkBuilder } from '@nuecms/sdk-builder';
 const apiClient = new SdkBuilder({
   baseUrl: 'https://api.example.com',
   defaultHeaders: {
-    Authorization: 'Bearer YOUR_API_TOKEN',
+    Authorization: 'Bearer {access_token}',
     'Content-Type': 'application/json',
   },
   timeout: 5000,
@@ -71,16 +71,14 @@ const apiClient = new SdkBuilder({
 ### 2. Register API Endpoints
 
 ```typescript
-apiClient.registerEndpoint('getUser', '/users/{id}', 'GET');
-apiClient.registerEndpoint('createUser', '/users', 'POST');
+apiClient.r('getUser', '/users/{id}', 'GET');
+apiClient.r('createUser', '/users', 'POST');
 ```
 
 ### 3. Make API Calls
 
 ```typescript
-const user = await apiClient.getUser({
-  placeholders: { id: '12345' },
-});
+const user = await apiClient.getUser({ id: '12345' });
 console.log(user);
 ```
 
@@ -93,9 +91,9 @@ console.log(user);
 Register endpoints with their HTTP method, path, and dynamic placeholders (e.g., `{id}`):
 
 ```typescript
-apiClient.registerEndpoint('getUser', '/users/{id}', 'GET');
-apiClient.registerEndpoint('deleteUser', '/users/{id}', 'DELETE');
-apiClient.registerEndpoint('createUser', '/users', 'POST');
+apiClient.r('getUser', '/users/{id}', 'GET');
+apiClient.r('deleteUser', '/users/{id}', 'DELETE');
+apiClient.r('createUser', '/users', 'POST');
 ```
 
 ### Making API Calls
@@ -103,10 +101,7 @@ apiClient.registerEndpoint('createUser', '/users', 'POST');
 Call the registered endpoints dynamically with placeholders and additional options:
 
 ```typescript
-const userDetails = await apiClient.getUser({
-  placeholders: { id: '12345' },
-  headers: { 'X-Custom-Header': 'MyValue' },
-});
+const userDetails = await apiClient.getUser({ id: '12345' });
 
 console.log(userDetails);
 ```
@@ -116,20 +111,22 @@ console.log(userDetails);
 The SDK supports multiple response formats:
 
 - **JSON** (default)
-- **XML**
+- **Blob**
 - **TEXT**
 
 You can specify a format per request or set a global default:
 
 ```typescript
-// Default JSON response
-const user = await apiClient.getUser({ placeholders: { id: '12345' } });
-
-// Request with XML response format
-const userXml = await apiClient.getUser({
-  placeholders: { id: '12345' },
-  responseFormat: 'xml',
+const apiClient = new SdkBuilder({
+  baseUrl: 'https://api.example.com',
+  defaultHeaders: {
+    Authorization: 'Bearer {access_token}',
+    'Content-Type': 'application/json',
+  },
+  timeout: 5000,
+  responseFormat: 'json', // Default response format
 });
+
 ```
 
 ### Caching with Redis
