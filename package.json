@@ -6,6 +6,9 @@
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite",
@@ -116,8 +119,7 @@
       "requireUpstream": false
     },
     "npm": {
-      "publish": true,
-      "access": "public"
+      "publish": true
     }
   }
 }
