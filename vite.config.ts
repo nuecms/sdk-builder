@@ -1,16 +1,19 @@
 import { defineConfig } from 'vite';
 import path from 'path';
 import tsconfigPaths from 'vite-tsconfig-paths'
+import dts from 'vite-plugin-dts'
 
 // Vite configuration for library development
 export default defineConfig({
-  plugins: [tsconfigPaths()], // Use TypeScript paths plugin
+  plugins: [tsconfigPaths(), dts()], // Use TypeScript paths plugin
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/index.ts'), // Entry point for the library
       name: 'SdkBuilder',                            // Global variable for UMD build
-      formats: ['es', 'cjs', 'umd'],                 // Output formats
-      fileName: (format) => `sdk-builder.${format}.js`, // Output file naming
+      formats: ['es', 'cjs'],                 // Output formats
+      fileName: (format) => {
+        return format === 'es' ? 'index.es.js' : 'index.js';
+      }
     },
     rollupOptions: {
       external: ['ioredis', 'cross-fetch'], // Mark dependencies as external
