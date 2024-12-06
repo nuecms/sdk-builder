@@ -22,7 +22,13 @@ interface EndpointConfig {
   path: string;
 }
 
-type EndpointFunction<Params = any, Response = any> = (params: Params) => Promise<Response>;
+
+type Params = Record<string, any>;
+type Response = any;
+type EndpointPureFunction<Params = any, Response = any> = (config: Record<string, any>, params?: Params) => Promise<Response>;
+type EndpointAFunction<Params = any, Response = any> = (params?: Params) => Promise<Response>;
+type EndpointBFunction<Params = any, Response = any> = (params: Params, extParams: any) => Promise<Response>;
+
 
 export const defaultConfig = {
   defaultHeaders: {
@@ -43,9 +49,7 @@ export const updateDefaultConfig = (config: SdkBuilderConfig): void => {
   Object.assign(defaultConfig, config);
 }
 
-export class SdkBuilder<
-  Endpoints extends Record<string, EndpointFunction<any, any>> = {}
-> {
+export class SdkBuilder {
   private baseUrl: string;
   private defaultHeaders: Record<string, string>;
   private timeout: number;
@@ -59,7 +63,7 @@ export class SdkBuilder<
   private retryDelay: number;
   private method: string;
   public cacheProvider: CacheProvider;
-  public authenticate!: () => Promise<Record<string, string>>;
+  [x: string]: any;
   authCheckStatus: (status: number, response?: object) => boolean;
 
   constructor(config: SdkBuilderConfig) {
@@ -86,18 +90,19 @@ export class SdkBuilder<
   /**
    * Registers a new endpoint or custom function.
    */
-  r<
+  public r<
     K extends string,
-    Params extends Record<string, any> = Record<string, any>,
-    Response = any
-  >(
+    P extends (string | EndpointPureFunction<Params, Response>),
+    T extends EndpointAFunction<Params, Response>,
+    R extends EndpointBFunction<Params, Response>
+  > (
     name: K,
-    path: string | ((this: SdkBuilder, config: Record<string, any>, params: Params) => Promise<Response>),
+    path: P,
     method: string = this.method
-  ): SdkBuilder<Endpoints & Record<K, EndpointFunction<Params, Response>>> {
+  ): asserts this is this & Record<K, T> & Record<K, R> {
     if (typeof path === 'function') {
       // Register custom function endpoint that uses `this` context
-      (this as any)[name] = async (params: Params) => {
+      (this as any)[name] = async (params?: Params) => {
         // Bind the current instance context to the `path` function
         return path.call(this, this.config, params);
       };
@@ -108,9 +113,7 @@ export class SdkBuilder<
         return this.callApi<Params, Response>(name, params, extParams);
       };
     }
-
-    // Return updated type with the new endpoint
-    return this as SdkBuilder<Endpoints & Record<K, EndpointFunction<Params, Response>>>;
+    return this as any;
   }
 
   /**

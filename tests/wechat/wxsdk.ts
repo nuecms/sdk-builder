@@ -2,7 +2,7 @@ import { sdkBuilder } from '../../src/lib/SdkBuilder';
 import { RedisCacheProvider } from '../../src/cache/redisProvider';
 import Redis from 'ioredis';
 
-const wechatSDK = sdkBuilder({
+const sdk: ReturnType<typeof sdkBuilder> = sdkBuilder({
   baseUrl: 'https://api.weixin.qq.com',
   cacheProvider: new RedisCacheProvider(new Redis()),
   placeholders: {
@@ -71,37 +71,34 @@ const routes = {
 };
 for (const [key, value] of Object.entries(routes)) {
   const [method, path] = value.split(' ');
-  wechatSDK.r(key, path, method);
+  sdk.r(key, path, method);
 }
 
 
 // Register endpoints with full type support
 
 // Register the auth method
-wechatSDK.r('authenticate', async (config) => {
+sdk.r('authenticate', async (config) => {
   const appId = config.appId;
   const appSecret = config.appSecret
   const cacheKey = `wechat_access_token_${appId}`;
-  const cachedToken = await wechatSDK.cacheProvider?.get(cacheKey);
+  const cachedToken = await sdk.cacheProvider?.get(cacheKey);
   if (cachedToken) {
     return cachedToken.value;
   }
-  const response = await wechatSDK.getAccessToken({ appid: appId, secret: appSecret, grant_type: 'client_credential' });
+  const response = await sdk.getAccessToken({ appid: appId, secret: appSecret, grant_type: 'client_credential' });
   // const accessToken = response.access_token;
   const expiresIn = response.expires_in || 7200;
-  await wechatSDK.cacheProvider?.set(cacheKey, response, 'json', expiresIn);
+  await sdk.cacheProvider?.set(cacheKey, response, 'json', expiresIn);
   return {
     access_token: response.access_token,
   };
 })
-
-if (wechatSDK.authenticate) {
-  wechatSDK.authenticate();
-}
+sdk.authenticate();
 
 
 
 
-export { wechatSDK, routes };
+export { sdk as wechatSDK, routes };
 
 
