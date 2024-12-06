@@ -16,6 +16,7 @@
     "prepare": "husky install",
     "clean": "rm -rf dist",
     "test:wx": "tsx watch tests/wechat/wechat.ts",
+    "release": "release-it",
     "npm:pub": "pnpm publish --access public"
   },
   "files": [
@@ -52,6 +53,7 @@
     "ioredis": "^5.4.1",
     "lint-staged": "^15.2.10",
     "prettier": "^3.4.1",
+    "release-it": "^17.10.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.2",
@@ -105,5 +107,17 @@
     "*.json": [
       "prettier --write"
     ]
+  },
+  "release-it": {
+    "git": {
+      "tagName": "v${version}",
+      "commitMessage": "chore(release): v${version}",
+      "requireCleanWorkingDir": true,
+      "requireUpstream": false
+    },
+    "npm": {
+      "publish": true,
+      "access": "public"
+    }
   }
 }
