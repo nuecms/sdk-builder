@@ -119,7 +119,7 @@
       "requireUpstream": false
     },
     "npm": {
-      "publish": true
+      "publish": false
     }
   }
 }
