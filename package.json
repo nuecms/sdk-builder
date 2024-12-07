@@ -26,6 +26,7 @@
     "clean": "rm -rf dist",
     "test:wx": "tsx watch tests/wechat/wechat.ts",
     "release": "release-it",
+    "prepublishOnly": "npm run build",
     "npm:pub": "pnpm publish --access public"
   },
   "files": [
