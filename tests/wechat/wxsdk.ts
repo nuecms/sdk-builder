@@ -2,6 +2,11 @@ import { sdkBuilder } from '../../src/lib/SdkBuilder';
 import { RedisCacheProvider } from '../../src/cache/redisProvider';
 import Redis from 'ioredis';
 
+type RouteMethod = 'GET' | 'POST';
+type RoutePath = string;
+type Routes = Record<string, `${RouteMethod} ${RoutePath}`>;
+
+
 const sdk: ReturnType<typeof sdkBuilder> = sdkBuilder({
   baseUrl: 'https://api.weixin.qq.com',
   cacheProvider: new RedisCacheProvider(new Redis()),
@@ -13,7 +18,7 @@ const sdk: ReturnType<typeof sdkBuilder> = sdkBuilder({
     appSecret: '282323a19761e2baba5e5b24ad60fa0f',
   }
 });
-const routes = {
+const routes: Routes = {
   'getAccessToken': 'GET /cgi-bin/token', // Get access token
   'getJsapiTicket': 'GET /cgi-bin/ticket/getticket', // Get JS API ticket
   'getOAuthAccessToken': 'GET /sns/oauth2/access_token', // OAuth2.0 access token
@@ -70,7 +75,7 @@ const routes = {
   'addWhitelist': 'POST /cgi-bin/template/api_add_to_template', // Add template to whitelist
 };
 for (const [key, value] of Object.entries(routes)) {
-  const [method, path] = value.split(' ');
+  const [method, path] = value.split(' ') as ['GET' | 'POST', string];
   sdk.r(key, path, method);
 }
 

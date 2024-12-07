@@ -258,8 +258,8 @@ export class SdkBuilder {
 
     const holders = { ...this.placeholders };
     if (Object.keys(holders).length > 0) {
-      for (const [key, value] of Object.entries(holders)) {
-        holders[key] = holders[key].replace(`{${key}}`, origialParams[value]);
+      for (const [key, _value] of Object.entries(holders)) {
+        holders[key] = holders[key].replace(`{${key}}`, origialParams[key]);
       }
     }
     let mixParams = {};
