@@ -78,7 +78,7 @@ for (const [key, value] of Object.entries(routes)) {
 // Register endpoints with full type support
 
 // Register the auth method
-sdk.r('authenticate', async (config) => {
+sdk.rx('authenticate', async (config) => {
   const appId = config.appId;
   const appSecret = config.appSecret
   const cacheKey = `wechat_access_token_${appId}`;

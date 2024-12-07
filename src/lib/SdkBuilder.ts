@@ -88,28 +88,39 @@ export class SdkBuilder {
   }
 
   /**
-   * Registers a new endpoint or custom function.
+   * Registers a new endpoint.
    */
   public r<
     K extends string,
-    P extends (string | EndpointPureFunction<Params, Response>),
-    R extends EndpointAFunction<Params, Response> | EndpointBFunction<Params, Response>
+    P extends string,
   > (
     name: K,
     path: P,
     method: string = this.method
-  ): asserts this is this & Record<K, R> {
+  ): asserts this is this & Record<K, EndpointBFunction<Params, Response>> {
+    // Register standard API endpoint
+    this.endpoints[name] = { method, path };
+    (this as any)[name] = async (params: Params, extParams: any) => {
+      return this.callApi<Params, Response>(name, params, extParams);
+    };
+    return this as any;
+  }
+
+  /**
+   * Registers a custom function.
+   */
+    public rx<
+    K extends string,
+    P extends EndpointPureFunction<Params, Response>
+  > (
+    name: K,
+    path: P
+  ): asserts this is this & Record<K, EndpointAFunction<Params, Response>>  {
     if (typeof path === 'function') {
       // Register custom function endpoint that uses `this` context
       (this as any)[name] = async (params?: Params) => {
         // Bind the current instance context to the `path` function
         return path.call(this, this.config, params);
-      };
-    } else {
-      // Register standard API endpoint
-      this.endpoints[name] = { method, path };
-      (this as any)[name] = async (params: Params, extParams: any) => {
-        return this.callApi<Params, Response>(name, params, extParams);
       };
     }
     return this as any;
