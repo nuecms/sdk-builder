@@ -93,13 +93,12 @@ export class SdkBuilder {
   public r<
     K extends string,
     P extends (string | EndpointPureFunction<Params, Response>),
-    T extends EndpointAFunction<Params, Response>,
-    R extends EndpointBFunction<Params, Response>
+    R extends EndpointAFunction<Params, Response> | EndpointBFunction<Params, Response>
   > (
     name: K,
     path: P,
     method: string = this.method
-  ): asserts this is this & Record<K, T> & Record<K, R> {
+  ): asserts this is this & Record<K, R> {
     if (typeof path === 'function') {
       // Register custom function endpoint that uses `this` context
       (this as any)[name] = async (params?: Params) => {

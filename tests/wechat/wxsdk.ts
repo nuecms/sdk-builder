@@ -84,7 +84,7 @@ sdk.r('authenticate', async (config) => {
   const cacheKey = `wechat_access_token_${appId}`;
   const cachedToken = await sdk.cacheProvider?.get(cacheKey);
   if (cachedToken) {
-    return cachedToken.value;
+    return cachedToken;
   }
   const response = await sdk.getAccessToken({ appid: appId, secret: appSecret, grant_type: 'client_credential' });
   // const accessToken = response.access_token;
