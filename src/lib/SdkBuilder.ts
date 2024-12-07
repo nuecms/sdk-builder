@@ -27,7 +27,7 @@ type Params = Record<string, any>;
 type Response = any;
 type EndpointPureFunction<Params = any, Response = any> = (config: Record<string, any>, params?: Params) => Promise<Response>;
 type EndpointAFunction<Params = any, Response = any> = (params?: Params) => Promise<Response>;
-type EndpointBFunction<Params = any, Response = any> = (params: Params, extParams: any) => Promise<Response>;
+type EndpointBFunction<Params = any, Response = any> = (params: Params, extParams?: any) => Promise<Response>;
 
 
 export const defaultConfig = {
