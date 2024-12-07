@@ -1,7 +1,7 @@
 import { CacheProvider } from '../cache/cacheProvider';
 import { ResponseTransformer } from '../transformers/responseTransformer';
 
-interface SdkBuilderConfig {
+export interface SdkBuilderConfig {
   retryDelay?: number;
   maxRetries?: number;
   method?: string;
