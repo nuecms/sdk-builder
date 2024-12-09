@@ -20,6 +20,9 @@
     },
     "./src/index": {
       "import": "./src/index.ts"
+    },
+    "./README.md": {
+      "import": "./README.md"
     }
   },
   "publishConfig": {
