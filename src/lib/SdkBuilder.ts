@@ -107,6 +107,24 @@ export class SdkBuilder {
   }
 
   /**
+   * Registers a new endpoint with options.
+   */
+  public z<
+    K extends string,
+    P extends Record<string, any>,
+  > (
+    name: K,
+    opt: P,
+  ): asserts this is this & Record<K, EndpointBFunction<Params, Response>> {
+    // Register standard API endpoint
+    this.endpoints[name] = { ...opt, method: opt.method, path: opt.path };
+    (this as any)[name] = async (params: Params, extParams: any) => {
+      return this.callApi<Params, Response>(name, params, extParams);
+    };
+    return this as any;
+  }
+
+  /**
    * Registers a custom function.
    */
     public rx<
@@ -172,7 +190,8 @@ export class SdkBuilder {
     // hooks for intercepting requests
     if (this.requestInterceptor) {
       const modifiedReq = await this.requestInterceptor({
-        endpoint: endpointName,
+        name: endpointName,
+        endpoint: endpoint,
         path: endpoint.path,
         method: endpoint.method,
         body,
