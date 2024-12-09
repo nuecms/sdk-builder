@@ -269,7 +269,7 @@ export class SdkBuilder {
         }
 
         if (this.customResponseTransformer) {
-          responseData = this.customResponseTransformer(responseData, this.responseFormat);
+          responseData = this.customResponseTransformer(responseData, requestOptions);
         }
 
         return responseData;
