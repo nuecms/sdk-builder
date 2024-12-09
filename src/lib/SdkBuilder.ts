@@ -133,6 +133,13 @@ export class SdkBuilder {
     this.config = { ...this.config, ...config };
   }
 
+  // Set the request interceptor
+  public async requestInterceptor(req: any): Promise<any> {
+    if (this.reqInterceptor) {
+      return this.reqInterceptor(req);
+    }
+    return req;
+  }
   // Handle authentication errors
   private async handleAuthError(endpointName: string, body: Record<string, any>, params: Record<string, any>) {
     if (this.authenticate) {
@@ -159,8 +166,32 @@ export class SdkBuilder {
       throw new Error(`Endpoint ${endpointName} not registered`);
     }
 
-    const headers = await this.resolveHeaders(this.defaultHeaders, {...body, ...params});
-    const subUrl = await this.resolvePath(endpoint.path, body, endpoint.method, params);
+    let headers = { ...this.defaultHeaders };
+    let path = endpoint.path;
+
+    // hooks for intercepting requests
+    if (this.requestInterceptor) {
+      const modifiedReq = await this.requestInterceptor({
+        endpoint: endpointName,
+        path: endpoint.path,
+        method: endpoint.method,
+        body,
+        headers: headers,
+        params,
+      });
+      if (modifiedReq.body) {
+        body = modifiedReq.body;
+      }
+      if (modifiedReq.headers) {
+        headers = modifiedReq.headers;
+      }
+      if (modifiedReq.path) {
+        path = modifiedReq.path;
+      }
+    }
+
+    headers = await this.resolveHeaders(headers, {...body, ...params});
+    const subUrl = await this.resolvePath(path, body, endpoint.method, params);
     const url = this.baseUrl + subUrl;
 
     const requestOptions: RequestInit = {
