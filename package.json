@@ -1,6 +1,6 @@
 {
   "name": "@nuecms/sdk-builder",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "An advanced, modular SDK Builder for creating universal API clients in browser and Node.js.",
   "type": "module",
   "main": "dist/index.js",
