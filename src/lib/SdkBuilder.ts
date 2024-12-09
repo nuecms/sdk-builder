@@ -9,7 +9,7 @@ export interface SdkBuilderConfig {
   defaultHeaders?: Record<string, string>;
   timeout?: number;
   type?: 'json' | 'text' | 'blob';
-  responseFormat?: 'json' | 'text' | 'blob';
+  responseFormat?: 'json' | 'text' | 'blob' | 'buffer';
   cacheProvider: CacheProvider;
   customResponseTransformer?: ResponseTransformer;
   placeholders?: Record<string, string>;
@@ -53,7 +53,7 @@ export class SdkBuilder {
   private baseUrl: string;
   private defaultHeaders: Record<string, string>;
   private timeout: number;
-  private responseFormat: 'json' | 'text' | 'blob';
+  private responseFormat: 'json' | 'text' | 'blob' | 'buffer';
   private customResponseTransformer?: ResponseTransformer;
   private endpoints: Record<string, EndpointConfig>;
   private placeholders: Record<string, string>;
@@ -253,8 +253,11 @@ export class SdkBuilder {
           throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
         }
 
+        const contentType = response.headers.get('Content-Type') || '';
+        const detectedFormat = this.getResponseFormat(contentType) || this.responseFormat;
+
         let responseData;
-        switch (this.responseFormat) {
+        switch (detectedFormat) {
           case 'json':
             responseData = await response.json();
             break;
@@ -263,6 +266,10 @@ export class SdkBuilder {
             break;
           case 'blob':
             responseData = await response.blob();
+            break;
+          case 'buffer':
+            const resBuffer = await response.arrayBuffer();
+            responseData = Buffer.from(resBuffer);
             break;
           default:
             throw new Error('Unsupported response format.');
@@ -293,6 +300,20 @@ export class SdkBuilder {
       resolvedHeaders[key] = value.replace(/{([^}]+)}/g, (_, match) => body[match]);
     }
     return resolvedHeaders;
+  }
+
+  // Determine response format based on the Content-Type header
+  private getResponseFormat(contentType: string): 'json' | 'text' | 'blob' | 'buffer' | undefined {
+    if (contentType.includes('application/json')) {
+      return 'json';
+    } else if (contentType.includes('text/')) {
+      return 'text';
+    } else if (contentType.includes('application/octet-stream')) {
+      return 'buffer';
+    } else if (contentType.includes('image/') || contentType.includes('application/pdf')) {
+      return 'blob';
+    }
+    // throw new Error('Unsupported Content-Type for response format.');
   }
 
   // Resolves placeholders in the path with values from the config or body
