@@ -43,6 +43,7 @@
     "npm:pub": "pnpm publish --access public"
   },
   "files": [
+    "README.md",
     "dist",
     "src"
   ],
