@@ -33,9 +33,5 @@ export default defineConfig({
       '@cache': path.resolve(__dirname, 'src/cache'),
       '@transformers': path.resolve(__dirname, 'src/transformers'),
     },
-  },
-  server: {
-    open: true,                                // Open browser on dev server start
-    port: 3000,                                // Dev server port
-  },
+  }
 });

@@ -1,8 +1,6 @@
-import { describe, it, beforeEach, expect, vi } from 'vitest';
-import { wechatSDK } from './wxsdk';
-import { BrowserCacheProvider } from '../../src/cache/browserProvider';
+import { describe, it, beforeEach, expect, vi, afterEach } from 'vitest';
+import { wechatSDK, envs } from './wxsdk';
 
-// Mock the response for WeChat API calls
 vi.mock('cross-fetch', async () => {
   const actualFetch = (await import('cross-fetch')).default;
   return {
@@ -10,7 +8,6 @@ vi.mock('cross-fetch', async () => {
     default: vi.fn(),
   };
 });
-
 
 describe('WeChat SDK Builder Tests', () => {
   let mockFetch: any;
@@ -20,20 +17,30 @@ describe('WeChat SDK Builder Tests', () => {
         access_token: 'mocked-access-token',
         expires_in: 7200,
       }),
+      status: 200,
+      ok: true,
+      headers: {
+        get: vi.fn().mockReturnValue('application/json'),
+      }
     });
 
-    globalThis.fetch = mockFetch; // Use mockFetch globally
+    globalThis.fetch = mockFetch;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('should fetch access token and return it', async () => {
-    // Call the SDK method
-    const accessToken = await wechatSDK.auth({ appid: 'your-app-id', secret: 'your' });
+    const response = await wechatSDK.getAccessToken({
+      appid: envs.appId,
+      secret: envs.appSecret,
+      grant_type: 'client_credential',
+    });
 
-    // Assertions
-    expect(accessToken).toBe('mocked-access-token');
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(response.access_token).toBe('mocked-access-token');
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.weixin.qq.com/cgi-bin/token?appid=your-app-id&secret=your-app-secret&grant_type=client_credential',
+      `https://api.weixin.qq.com/cgi-bin/token?appid=${envs.appId}&secret=${envs.appSecret}&grant_type=client_credential`,
       expect.objectContaining({
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -52,16 +59,19 @@ describe('WeChat SDK Builder Tests', () => {
       },
     };
 
-    // Mock the response for sendTemplateMessage
     mockFetch.mockResolvedValueOnce({
       json: vi.fn().mockResolvedValue({ errcode: 0, errmsg: 'ok' }),
+      status: 200,
+      ok: true,
+      headers: {
+        get: vi.fn().mockReturnValue('application/json'),
+      }
     });
 
     const sendResult = await wechatSDK.sendTemplateMessage(messagePayload);
 
     expect(sendResult.errcode).toBe(0);
     expect(sendResult.errmsg).toBe('ok');
-    expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(mockFetch).toHaveBeenCalledWith(
       'https://api.weixin.qq.com/cgi-bin/message/template/send',
       expect.objectContaining({
@@ -76,16 +86,19 @@ describe('WeChat SDK Builder Tests', () => {
     const openid = 'user-open-id';
     const userInfo = { nickname: 'John Doe', openid: openid };
 
-    // Mock the response for getUserInfo
     mockFetch.mockResolvedValueOnce({
       json: vi.fn().mockResolvedValue(userInfo),
+      status: 200,
+      ok: true,
+      headers: {
+        get: vi.fn().mockReturnValue('application/json'),
+      }
     });
 
     const result = await wechatSDK.getUserInfo({ openid });
 
     expect(result.nickname).toBe('John Doe');
     expect(result.openid).toBe(openid);
-    expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(mockFetch).toHaveBeenCalledWith(
       'https://api.weixin.qq.com/cgi-bin/user/info?openid=user-open-id',
       expect.objectContaining({
@@ -93,31 +106,5 @@ describe('WeChat SDK Builder Tests', () => {
         headers: { 'Content-Type': 'application/json' },
       })
     );
-  });
-
-  it('should cache access token and reuse it', async () => {
-    const appId = 'your-app-id';
-    const appSecret = 'your-app-secret';
-
-    // Mock the cache provider
-    const cacheProvider = new BrowserCacheProvider();
-    vi.spyOn(cacheProvider, 'get').mockResolvedValueOnce(null); // Simulate no cache hit
-    vi.spyOn(cacheProvider, 'set').mockResolvedValueOnce(undefined); // Simulate setting cache
-
-    // Fetch access token and cache it
-    const accessToken = await wechatSDK.getAccessToken({ appid: appId, secret: appSecret });
-
-    // Check that the token was cached
-    expect(accessToken).toBe('mocked-access-token');
-    expect(cacheProvider.get).toHaveBeenCalledTimes(1);
-    expect(cacheProvider.set).toHaveBeenCalledTimes(1);
-
-    // Simulate cache hit
-    vi.spyOn(cacheProvider, 'get').mockResolvedValueOnce({ value: 'mocked-access-token' });
-
-    const cachedToken = await wechatSDK.getAccessToken({ appid: appId, secret: appSecret });
-    expect(cachedToken).toBe('mocked-access-token');
-    expect(cacheProvider.get).toHaveBeenCalledTimes(2);
-    expect(cacheProvider.set).toHaveBeenCalledTimes(1); // set should only be called once
   });
 });

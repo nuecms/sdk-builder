@@ -1,10 +1,20 @@
 import { sdkBuilder } from '../../src/lib/SdkBuilder';
 import { RedisCacheProvider } from '../../src/cache/redisProvider';
 import Redis from 'ioredis';
+import path from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 type RouteMethod = 'GET' | 'POST';
 type RoutePath = string;
 type Routes = Record<string, `${RouteMethod} ${RoutePath}`>;
+
+
+export const envs = {
+  appId: process.env.VITE_APP_APPID || '',
+  appSecret: process.env.VITE_APP_APPSECRET || ''
+};
 
 
 const sdk: ReturnType<typeof sdkBuilder> = sdkBuilder({
@@ -14,8 +24,8 @@ const sdk: ReturnType<typeof sdkBuilder> = sdkBuilder({
     access_token: '{access_token}',
   },
   config: {
-    appId: 'wx95e5a58207fb5f67',
-    appSecret: '282323a19761e2baba5e5b24ad60fa0f',
+    appId: process.env.VITE_APP_APPID || '',
+    appSecret: process.env.VITE_APP_APPSECRET || ''
   }
 });
 const routes: Routes = {
@@ -87,14 +97,16 @@ sdk.rx('authenticate', async (config) => {
   const appId = config.appId;
   const appSecret = config.appSecret
   const cacheKey = `wechat_access_token_${appId}`;
-  const cachedToken = await sdk.cacheProvider?.get(cacheKey);
-  if (cachedToken) {
-    return cachedToken;
+  const cached = await sdk.cacheProvider?.get(cacheKey);
+  if (cached.value) {
+    sdk.enhanceConfig({ access_token: cached?.value?.access_token });
+    return cached.value;
   }
   const response = await sdk.getAccessToken({ appid: appId, secret: appSecret, grant_type: 'client_credential' });
   // const accessToken = response.access_token;
   const expiresIn = response.expires_in || 7200;
   await sdk.cacheProvider?.set(cacheKey, response, 'json', expiresIn);
+  sdk.enhanceConfig({ access_token: response.access_token });
   return {
     access_token: response.access_token,
   };

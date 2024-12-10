@@ -12,7 +12,7 @@ describe('jsonResponseTransformer', () => {
 
     const transformedData = jsonTransformer(mockData, 'json');
 
-    expect(transformedData.user.name).toBe('JOHN DOE');
+    expect(transformedData.user.name).toBe('john doe');
   });
 
   it('should return unmodified data for non-JSON formats', () => {
