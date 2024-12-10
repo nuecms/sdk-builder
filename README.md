@@ -133,9 +133,16 @@ Integrate caching with `ioredis` or any custom provider:
 
 ```typescript
 import Redis from 'ioredis';
+import { RedisCacheProvider } from '@nuecms/sdk-builder';
 
-const redis = new Redis();
-apiClient.useCacheProvider(redis);
+const apiClient = new SdkBuilder({
+  baseUrl: 'https://api.example.com',
+  defaultHeaders: {
+    Authorization: 'Bearer {access_token}',
+    'Content-Type': 'application/json',
+  },
+  cacheProvider: new RedisCacheProvider(new Redis()),
+});
 
 // Example: Cache a response
 await apiClient.cacheProvider.set('user:12345', JSON.stringify(userDetails), 'json', 3600);
