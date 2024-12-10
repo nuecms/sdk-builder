@@ -2,6 +2,10 @@
 
 An advanced, modular SDK Builder for Node.js applications that simplifies API client creation. Supports dynamic endpoints, caching, custom response handling, and more — fully written in TypeScript for type safety and developer-friendly integration.
 
+[![npm](https://img.shields.io/npm/v/@nuecms/sdk-builder)](https://www.npmjs.com/package/@nuecms/sdk-builder)
+[![GitHub](https://img.shields.io/github/license/nuecms/sdk-builder)](https://www.github.com/nuecms/sdk-builder)
+[![GitHub issues](https://img.shields.io/github/issues/nuecms/sdk-builder)](https://www.github.com/nuecms/sdk-builder/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/nuecms/sdk-builder)](https://www.github.com/nuecms/sdk-builder/pulls)
 ---
 
 ## **Features**
@@ -18,6 +22,7 @@ An advanced, modular SDK Builder for Node.js applications that simplifies API cl
 ## **Table of Contents**
 
 - [**SDK Builder**](#sdk-builder)
+  - [](#)
   - [**Features**](#features)
   - [**Table of Contents**](#table-of-contents)
   - [**Installation**](#installation)
