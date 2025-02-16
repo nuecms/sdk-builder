@@ -175,27 +175,23 @@ export class SdkBuilder {
     }
     throw new Error('Authentication error and no authentication hook provided');
   }
-  // Call the API with retries and timeouts
-  private async callApi<Params extends Record<string, any>, Response>(
-    endpointName: string,
-    body: Params,
-    params: Record<string, any>
-  ): Promise<Response | undefined> {
-    const endpoint = this.endpoints[endpointName];
-    if (!endpoint) {
-      throw new Error(`Endpoint ${endpointName} not registered`);
-    }
 
+  private async executeApiCall<Params extends Record<string, any>, Response>(
+    path: string,
+    method: string,
+    body: Params,
+    params: Record<string, any>,
+    endpointName: string
+  ): Promise<Response | undefined> {
     let headers = { ...this.defaultHeaders };
-    let path = endpoint.path;
 
     // hooks for intercepting requests
     if (this.requestInterceptor) {
       const modifiedReq = await this.requestInterceptor({
         name: endpointName,
-        endpoint: endpoint,
-        path: endpoint.path,
-        method: endpoint.method,
+        endpoint: { method, path },
+        path,
+        method,
         body,
         headers: headers,
         params,
@@ -211,17 +207,17 @@ export class SdkBuilder {
       }
     }
 
-    headers = await this.resolveHeaders(headers, {...body, ...params});
-    const subUrl = await this.resolvePath(path, body, endpoint.method, params);
+    headers = await this.resolveHeaders(headers, { ...body, ...params });
+    const subUrl = await this.resolvePath(path, body, method, params);
     const url = this.baseUrl + subUrl;
 
     const requestOptions: RequestInit = {
-      method: endpoint.method,
+      method,
       headers,
-      body: endpoint.method === 'POST' ? JSON.stringify(body) : undefined,
+      body: method === 'POST' ? JSON.stringify(body) : undefined,
     };
 
-    if (endpoint.method === 'GET') {
+    if (method === 'GET') {
       delete requestOptions.body;
     } else if (body instanceof FormData) {
       requestOptions.body = body;
@@ -295,6 +291,53 @@ export class SdkBuilder {
       }
     }
   }
+
+  // Call the API with retries and timeouts
+  private async callApi<Params extends Record<string, any>, Response>(
+    endpointName: string,
+    body: Params,
+    params: Record<string, any>
+  ): Promise<Response | undefined> {
+    const endpoint = this.endpoints[endpointName];
+    if (!endpoint) {
+      throw new Error(`Endpoint ${endpointName} not registered`);
+    }
+    return this.executeApiCall(endpoint.path, endpoint.method, body, params, endpointName);
+  }
+
+  /**
+   * Call the API without an endpoint name.
+   */
+  public async callApiWithoutEndpoint<Params extends Record<string, any>, Response>(
+    path: string,
+    method: string,
+    body: Params,
+    params: Record<string, any> = {}
+  ): Promise<Response | undefined> {
+    return this.executeApiCall(path, method, body, params, 'custom');
+  }
+
+  /**
+   * Public method to make a POST request.
+   */
+  public async post<Params extends Record<string, any>, Response>(
+    path: string,
+    body: Params,
+    params: Record<string, any> = {}
+  ): Promise<Response | undefined> {
+    return this.executeApiCall(path, 'POST', body, params, 'custom');
+  }
+
+  /**
+   * Public method to make a GET request.
+   */
+  public async get<Params extends Record<string, any>, Response>(
+    path: string,
+    params: Record<string, any> = {}
+  ): Promise<Response | undefined> {
+    return this.executeApiCall(path, 'GET', {} as Params, params, 'custom');
+  }
+
   // Resolves placeholders in the headers with values from the config or body
   private async resolveHeaders(headers: Record<string, string>, body: Record<string, any>): Promise<Record<string, string>> {
     const resolvedHeaders = { ...headers };
