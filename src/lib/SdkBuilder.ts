@@ -24,8 +24,10 @@ interface EndpointConfig {
 
 
 type Params = Record<string, any>;
+// argument params
+type ArgumentParams = Array<any>;
 type Response = any;
-type EndpointPureFunction<Params = any, Response = any> = (config: Record<string, any>, params?: Params) => Promise<Response>;
+type EndpointPureFunction<ArgumentParams extends any[] = any[], Response = any> = (config: Record<string, any>, ...params: ArgumentParams) => Promise<Response>;
 type EndpointAFunction<Params = any, Response = any> = (params?: Params) => Promise<Response>;
 type EndpointBFunction<Params = any, Response = any> = (params: Params, extParams?: any) => Promise<Response>;
 
@@ -129,16 +131,16 @@ export class SdkBuilder {
    */
     public rx<
     K extends string,
-    P extends EndpointPureFunction<Params, Response>
+    P extends EndpointPureFunction<ArgumentParams, Response>
   > (
     name: K,
     path: P
-  ): asserts this is this & Record<K, EndpointAFunction<Params, Response>>  {
+  ): asserts this is this & Record<K, EndpointAFunction<ArgumentParams, Response>>  {
     if (typeof path === 'function') {
       // Register custom function endpoint that uses `this` context
-      (this as any)[name] = async (params?: Params) => {
+      (this as any)[name] = async (...params: ArgumentParams) => {
         // Bind the current instance context to the `path` function
-        return path.call(this, this.config, params);
+        return path.apply(this, [this.config, ...params]);
       };
     }
     return this as any;
