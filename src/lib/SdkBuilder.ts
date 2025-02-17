@@ -2,6 +2,8 @@ import { CacheProvider } from '../cache/cacheProvider';
 import { ResponseTransformer } from '../transformers/responseTransformer';
 
 export interface SdkBuilderConfig {
+  retryStatus: (status: number) => boolean;
+  validateStatus: (status: number) => boolean;
   retryDelay?: number;
   maxRetries?: number;
   method?: string;
@@ -14,7 +16,7 @@ export interface SdkBuilderConfig {
   customResponseTransformer?: ResponseTransformer;
   placeholders?: Record<string, string>;
   config?: Record<string, any>;
-  authCheckStatus?: (status: number, response?: object) => boolean;
+  authCheckStatus?: (status: number, response?: object, fetchContext?: Record<string, any>) => boolean;
 }
 
 interface EndpointConfig {
@@ -45,11 +47,19 @@ export const defaultConfig = {
   config: {},
   placeholders: {},
   authCheckStatus: (status: number) => status === 401,
+  validateStatus: function (status: number) {
+    return status >= 200 && status < 300; // default
+  },
+  retryStatus: function (status: number) {
+    return status >= 500; // default
+  }
 };
 
 export const updateDefaultConfig = (config: SdkBuilderConfig): void => {
   Object.assign(defaultConfig, config);
 }
+
+export class RequestError extends Error {}
 
 export class SdkBuilder {
   private baseUrl: string;
@@ -66,20 +76,22 @@ export class SdkBuilder {
   private method: string;
   public cacheProvider: CacheProvider;
   [x: string]: any;
-  authCheckStatus: (status: number, response?: object) => boolean;
+  authCheckStatus: (status: number, response?: object, fetchContext?: Record<string, any>) => boolean;
 
   constructor(config: SdkBuilderConfig) {
     this.baseUrl = config.baseUrl || '';
     this.type = config.type ?? defaultConfig.type;
     this.timeout = config.timeout || defaultConfig.timeout;
-    this.maxRetries = config.maxRetries || defaultConfig.maxRetries;
-    this.retryDelay = config.retryDelay || defaultConfig.retryDelay;
+    this.maxRetries = config.maxRetries ?? defaultConfig.maxRetries;
+    this.retryDelay = config.retryDelay ?? defaultConfig.retryDelay;
     this.responseFormat = config.responseFormat  || defaultConfig.responseFormat;
     this.defaultHeaders = config.defaultHeaders || {};
     this.cacheProvider = config.cacheProvider as CacheProvider;
     this.method = config.method || defaultConfig.method;
     this.customResponseTransformer = config.customResponseTransformer;
     this.authCheckStatus = config.authCheckStatus || defaultConfig.authCheckStatus;
+    this.validateStatus = config.validateStatus || defaultConfig.validateStatus;
+    this.retryStatus = config.retryStatus || defaultConfig.retryStatus;
     this.placeholders = config.placeholders || defaultConfig.placeholders;
     this.config = config.config || defaultConfig.config;
 
@@ -228,6 +240,10 @@ export class SdkBuilder {
 
     requestOptions.headers = headers;
 
+    const fetchContext = {
+      body, headers, path, method, endpointName, url, params
+    }
+
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
         const controller = new AbortController();
@@ -238,54 +254,61 @@ export class SdkBuilder {
         clearTimeout(timeoutId);
 
         // Check for non-2xx responses
-        if (this.authCheckStatus(response.status, response)) {
+        if (this.authCheckStatus(response.status, response, fetchContext)) {
           // Handle authentication error (401 Unauthorized)
           return this.handleAuthError(endpointName, body, params) as unknown as Response | undefined;
         }
 
-        if (!response.ok) {
-          if (response.status >= 500 && attempt < this.maxRetries) {
-            await this.delay(this.retryDelay);
-            continue;
+        if(this.validateStatus(response.status)) {
+          const contentType = response.headers.get('Content-Type') || '';
+          const detectedFormat = this.getResponseFormat(contentType) || this.responseFormat;
+          let responseData;
+
+          switch (detectedFormat) {
+            case 'json':
+              responseData = await response.json();
+              break;
+            case 'text':
+              responseData = await response.text();
+              break;
+            case 'blob':
+              responseData = await response.blob();
+              break;
+            case 'buffer':
+              const resBuffer = await response.arrayBuffer();
+              responseData = Buffer.from(resBuffer);
+              break;
+            default:
+              throw new Error('Unsupported response format.');
           }
-          throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+
+          if (this.customResponseTransformer) {
+            responseData = this.customResponseTransformer(responseData, fetchContext);
+          }
+          return responseData;
+        }
+        // sever error
+        if (this.retryStatus(response.status) && attempt < this.maxRetries) {
+          await this.delay(this.retryDelay);
+          continue;
         }
 
-        const contentType = response.headers.get('Content-Type') || '';
-        const detectedFormat = this.getResponseFormat(contentType) || this.responseFormat;
-
-        let responseData;
-        switch (detectedFormat) {
-          case 'json':
-            responseData = await response.json();
-            break;
-          case 'text':
-            responseData = await response.text();
-            break;
-          case 'blob':
-            responseData = await response.blob();
-            break;
-          case 'buffer':
-            const resBuffer = await response.arrayBuffer();
-            responseData = Buffer.from(resBuffer);
-            break;
-          default:
-            throw new Error('Unsupported response format.');
+        if (response.status === 400) {
+          const s = await response.text()
+          throw new RequestError(`HTTP Error: ${response.status} ${response.statusText} ${s}`);
         }
-
-        if (this.customResponseTransformer) {
-          responseData = this.customResponseTransformer(responseData, requestOptions);
-        }
-
-        return responseData;
       } catch (error) {
-        if (attempt >= this.maxRetries) {
+        if (this.maxRetries && attempt >= this.maxRetries) {
           throw new Error(
             `Request failed after ${this.maxRetries + 1} attempts: ${(error as Error).message}`
           );
         }
         if ((error as Error).name === 'AbortError') {
           throw new Error(`Request timed out after ${this.timeout}ms`);
+        }
+
+        if (error instanceof RequestError) {
+          throw error;
         }
         await this.delay(this.retryDelay);
       }
