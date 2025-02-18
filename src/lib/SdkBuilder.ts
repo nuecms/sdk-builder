@@ -250,7 +250,11 @@ export class SdkBuilder {
           headers['Content-Type'] = 'application/json';
           requestOptions.body = JSON.stringify(body);
         } else {
-          headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+          if (contentType.indexOf('/')) {
+            headers['Content-Type'] = contentType;
+          } else {
+            headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+          }
           requestOptions.body = stringifyBody(body);
         }
       }
