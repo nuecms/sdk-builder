@@ -10,6 +10,7 @@ export interface FetchContext {
   url: string;
   params: Record<string, any>;
   extParams?: Record<string, any>;
+  config: Record<string, any>;
 }
 
 export interface SdkBuilderConfig {
@@ -27,7 +28,7 @@ export interface SdkBuilderConfig {
   customResponseTransformer?: ResponseTransformer<FetchContext>;
   placeholders?: Record<string, string>;
   config?: Record<string, any>;
-  authCheckStatus?: (status: number, response?: object, fetchContext?: Record<string, any>) => boolean;
+  authCheckStatus?: (status: number, response?: object, fetchContext?: FetchContext) => boolean;
 }
 
 interface EndpointConfig {
@@ -100,7 +101,7 @@ export class SdkBuilder {
   private method: string;
   public cacheProvider: CacheProvider;
   [x: string]: any;
-  authCheckStatus: (status: number, response?: object, fetchContext?: Record<string, any>) => boolean;
+  authCheckStatus: (status: number, response?: object, fetchContext?: FetchContext) => boolean;
 
   constructor(config: SdkBuilderConfig) {
     this.baseUrl = config.baseUrl || '';
@@ -278,7 +279,7 @@ export class SdkBuilder {
     requestOptions.headers = headers;
 
     const fetchContext: FetchContext = {
-      body, headers, path, method, endpointName, url, params, extParams: { ...this.config, ...extParams }
+      body, headers, path, method, endpointName, url, params, config: this.config, extParams
     }
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
