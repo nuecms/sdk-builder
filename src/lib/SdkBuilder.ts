@@ -24,6 +24,15 @@ interface EndpointConfig {
   path: string;
 }
 
+interface ExecuteApiCallOptions<Params> {
+  method: string;
+  body: Params;
+  params: Record<string, any>;
+  endpointName: string;
+  dataType?: string;
+  contentType?: string;
+  stringifyBody?: (body: Record<string, any>) => string;
+}
 
 type Params = Record<string, any>;
 // argument params
@@ -190,12 +199,13 @@ export class SdkBuilder {
 
   private async executeApiCall<Params extends Record<string, any>, Response>(
     path: string,
-    method: string,
-    body: Params,
-    params: Record<string, any>,
-    endpointName: string
+    options: ExecuteApiCallOptions<Params>
   ): Promise<Response | undefined> {
     let headers = { ...this.defaultHeaders };
+
+    let { method, body, params, endpointName, dataType, contentType, stringifyBody } = options;
+    stringifyBody = stringifyBody || ((body: Record<string, any>) => new URLSearchParams(body).toString());
+    body = body || {};
 
     // hooks for intercepting requests
     if (this.requestInterceptor) {
@@ -223,19 +233,27 @@ export class SdkBuilder {
     const subUrl = await this.resolvePath(path, body, method, params);
     const url = this.baseUrl + subUrl;
 
-    const requestOptions: RequestInit = {
+    const requestOptions: any = {
       method,
       headers,
-      body: method === 'POST' ? JSON.stringify(body) : undefined,
+      body
     };
 
     if (method === 'GET') {
       delete requestOptions.body;
-    } else if (body instanceof FormData) {
-      requestOptions.body = body;
-      delete headers['Content-Type'];
     } else {
-      headers['Content-Type'] = 'application/json';
+      if (body instanceof FormData) {
+        delete headers['Content-Type'];
+      } else {
+        contentType = contentType || dataType || this.type;
+        if (contentType === 'json') {
+          headers['Content-Type'] = 'application/json';
+          requestOptions.body = JSON.stringify(body);
+        } else {
+          headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+          requestOptions.body = stringifyBody(body);
+        }
+      }
     }
 
     requestOptions.headers = headers;
@@ -260,8 +278,8 @@ export class SdkBuilder {
         }
 
         if(this.validateStatus(response.status)) {
-          const contentType = response.headers.get('Content-Type') || '';
-          const detectedFormat = this.getResponseFormat(contentType) || this.responseFormat;
+          const resType = response.headers.get('Content-Type') || '';
+          const detectedFormat = dataType || this.getResponseFormat(resType) || this.responseFormat;
           let responseData;
 
           switch (detectedFormat) {
@@ -325,7 +343,7 @@ export class SdkBuilder {
     if (!endpoint) {
       throw new Error(`Endpoint ${endpointName} not registered`);
     }
-    return this.executeApiCall(endpoint.path, endpoint.method, body, params, endpointName);
+    return this.executeApiCall(endpoint.path, { method: endpoint.method, body, params, endpointName });
   }
 
   /**
@@ -333,11 +351,9 @@ export class SdkBuilder {
    */
   public async callApiWithoutEndpoint<Params extends Record<string, any>, Response>(
     path: string,
-    method: string,
-    body: Params,
-    params: Record<string, any> = {}
+    options: Omit<ExecuteApiCallOptions<Params>, 'endpointName'>
   ): Promise<Response | undefined> {
-    return this.executeApiCall(path, method, body, params, 'custom');
+    return this.executeApiCall(path, { ...options, endpointName: 'custom' });
   }
 
   /**
@@ -345,10 +361,9 @@ export class SdkBuilder {
    */
   public async post<Params extends Record<string, any>, Response>(
     path: string,
-    body: Params,
-    params: Record<string, any> = {}
+    options: Omit<ExecuteApiCallOptions<Params>, 'method' | 'endpointName'>
   ): Promise<Response | undefined> {
-    return this.executeApiCall(path, 'POST', body, params, 'custom');
+    return this.executeApiCall(path, { method: 'POST', ...options, endpointName: 'custom' });
   }
 
   /**
@@ -356,9 +371,9 @@ export class SdkBuilder {
    */
   public async get<Params extends Record<string, any>, Response>(
     path: string,
-    params: Record<string, any> = {}
+    options: Omit<ExecuteApiCallOptions<Params>, 'method' | 'endpointName'>
   ): Promise<Response | undefined> {
-    return this.executeApiCall(path, 'GET', {} as Params, params, 'custom');
+    return this.executeApiCall(path, { method: 'GET', ...options, endpointName: 'custom' });
   }
 
   // Resolves placeholders in the headers with values from the config or body
