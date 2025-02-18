@@ -9,6 +9,7 @@ export interface FetchContext {
   endpointName: string;
   url: string;
   params: Record<string, any>;
+  extParams?: Record<string, any>;
 }
 
 export interface SdkBuilderConfig {
@@ -37,7 +38,9 @@ interface EndpointConfig {
 interface ExecuteApiCallOptions<Params> {
   method: string;
   body: Params;
+  headers?: Record<string, string>;
   params: Record<string, any>;
+  extParams?: Record<string, any>;
   endpointName: string;
   dataType?: string;
   contentType?: string;
@@ -213,9 +216,9 @@ export class SdkBuilder {
     path: string,
     options: ExecuteApiCallOptions<Params>
   ): Promise<Response | undefined> {
-    let headers = { ...this.defaultHeaders };
 
-    let { method, body, params, endpointName, dataType, contentType, stringifyBody } = options;
+    let { method, body, params, endpointName, dataType, contentType, stringifyBody, headers: initHeaders, extParams } = options;
+    let headers = { ...this.defaultHeaders, ...initHeaders };
     stringifyBody = stringifyBody || ((body: Record<string, any>) => new URLSearchParams(body).toString());
     body = body || {};
 
@@ -275,7 +278,7 @@ export class SdkBuilder {
     requestOptions.headers = headers;
 
     const fetchContext: FetchContext = {
-      body, headers, path, method, endpointName, url, params
+      body, headers, path, method, endpointName, url, params, extParams: { ...this.config, ...extParams }
     }
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
