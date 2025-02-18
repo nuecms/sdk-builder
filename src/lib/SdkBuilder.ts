@@ -2,8 +2,8 @@ import { CacheProvider } from '../cache/cacheProvider';
 import { ResponseTransformer } from '../transformers/responseTransformer';
 
 export interface SdkBuilderConfig {
-  retryStatus: (status: number) => boolean;
-  validateStatus: (status: number) => boolean;
+  retryStatus?: (status: number) => boolean;
+  validateStatus?: (status: number) => boolean;
   retryDelay?: number;
   maxRetries?: number;
   method?: string;
