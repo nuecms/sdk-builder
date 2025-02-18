@@ -1,6 +1,16 @@
 import { CacheProvider } from '../cache/cacheProvider';
 import { ResponseTransformer } from '../transformers/responseTransformer';
 
+export interface FetchContext {
+  body: Record<string, any>;
+  headers: Record<string, string>;
+  path: string;
+  method: string;
+  endpointName: string;
+  url: string;
+  params: Record<string, any>;
+}
+
 export interface SdkBuilderConfig {
   retryStatus?: (status: number) => boolean;
   validateStatus?: (status: number) => boolean;
@@ -12,8 +22,8 @@ export interface SdkBuilderConfig {
   timeout?: number;
   type?: 'json' | 'text' | 'blob';
   responseFormat?: 'json' | 'text' | 'blob' | 'buffer';
-  cacheProvider: CacheProvider;
-  customResponseTransformer?: ResponseTransformer;
+  cacheProvider?: CacheProvider;
+  customResponseTransformer?: ResponseTransformer<FetchContext>;
   placeholders?: Record<string, string>;
   config?: Record<string, any>;
   authCheckStatus?: (status: number, response?: object, fetchContext?: Record<string, any>) => boolean;
@@ -33,6 +43,8 @@ interface ExecuteApiCallOptions<Params> {
   contentType?: string;
   stringifyBody?: (body: Record<string, any>) => string;
 }
+
+
 
 type Params = Record<string, any>;
 // argument params
@@ -75,7 +87,7 @@ export class SdkBuilder {
   private defaultHeaders: Record<string, string>;
   private timeout: number;
   private responseFormat: 'json' | 'text' | 'blob' | 'buffer';
-  private customResponseTransformer?: ResponseTransformer;
+  private customResponseTransformer?: ResponseTransformer<FetchContext>;
   private endpoints: Record<string, EndpointConfig>;
   private placeholders: Record<string, string>;
   private config: Record<string, any>;
@@ -250,7 +262,7 @@ export class SdkBuilder {
           headers['Content-Type'] = 'application/json';
           requestOptions.body = JSON.stringify(body);
         } else {
-          if (contentType.indexOf('/')) {
+          if (contentType.indexOf('/') !== -1) {
             headers['Content-Type'] = contentType;
           } else {
             headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
@@ -262,7 +274,7 @@ export class SdkBuilder {
 
     requestOptions.headers = headers;
 
-    const fetchContext = {
+    const fetchContext: FetchContext = {
       body, headers, path, method, endpointName, url, params
     }
 
@@ -305,7 +317,7 @@ export class SdkBuilder {
           }
 
           if (this.customResponseTransformer) {
-            responseData = this.customResponseTransformer(responseData, fetchContext);
+            responseData = this.customResponseTransformer(responseData, fetchContext, response);
           }
           return responseData;
         }

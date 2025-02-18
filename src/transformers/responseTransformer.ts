@@ -1,1 +1,1 @@
-export type ResponseTransformer = (data: any, options: any) => any;
+export type ResponseTransformer<F> = (data: any, options: F, response: Response) => any;
