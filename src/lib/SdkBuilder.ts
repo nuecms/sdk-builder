@@ -38,9 +38,9 @@ interface EndpointConfig {
 
 interface ExecuteApiCallOptions<Params> {
   method: string;
-  body: Params;
+  body?: Params;
   headers?: Record<string, string>;
-  params: Record<string, any>;
+  params?: Record<string, any>;
   extParams?: Record<string, any>;
   endpointName: string;
   dataType?: string;
@@ -221,7 +221,8 @@ export class SdkBuilder {
     let { method, body, params, endpointName, dataType, contentType, stringifyBody, headers: initHeaders, extParams } = options;
     let headers = { ...this.defaultHeaders, ...initHeaders };
     stringifyBody = stringifyBody || ((body: Record<string, any>) => new URLSearchParams(body).toString());
-    body = body || {};
+    body = (body || {}) as Params;
+    params = (params || {}) as Record<string, any>;
 
     // hooks for intercepting requests
     if (this.requestInterceptor) {
