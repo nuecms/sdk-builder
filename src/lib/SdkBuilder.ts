@@ -1,8 +1,8 @@
 import { CacheProvider } from '../cache/cacheProvider';
 import { ResponseTransformer } from '../transformers/responseTransformer';
 
-export interface FetchContext {
-  body: Record<string, any>;
+export interface FetchContext<Params = Record<string, any>> {
+  body: Params;
   headers: Record<string, string>;
   path: string;
   method: string;
@@ -38,17 +38,15 @@ interface EndpointConfig {
 
 interface ExecuteApiCallOptions<Params> {
   method: string;
-  body?: Params;
+  body: Params;
   headers?: Record<string, string>;
-  params?: Record<string, any>;
+  params: Record<string, any>;
   extParams?: Record<string, any>;
   endpointName: string;
   dataType?: string;
   contentType?: string;
   stringifyBody?: (body: Record<string, any>) => string;
 }
-
-
 
 type Params = Record<string, any>;
 // argument params
@@ -221,7 +219,7 @@ export class SdkBuilder {
     let { method, body, params, endpointName, dataType, contentType, stringifyBody, headers: initHeaders, extParams } = options;
     let headers = { ...this.defaultHeaders, ...initHeaders };
     stringifyBody = stringifyBody || ((body: Record<string, any>) => new URLSearchParams(body).toString());
-    body = (body || {}) as Params;
+    body = (body || {});
     params = (params || {}) as Record<string, any>;
 
     // hooks for intercepting requests
@@ -279,7 +277,7 @@ export class SdkBuilder {
 
     requestOptions.headers = headers;
 
-    const fetchContext: FetchContext = {
+    const fetchContext: FetchContext<Record<string, any>> = {
       body, headers, path, method, endpointName, url, params, config: this.config, extParams
     }
 
@@ -382,7 +380,7 @@ export class SdkBuilder {
    */
   public async post<Params extends Record<string, any>, Response>(
     path: string,
-    options: Omit<ExecuteApiCallOptions<Params>, 'method' | 'endpointName'>
+    options: Omit<ExecuteApiCallOptions<Params>, 'method' | 'endpointName'> & { params?: Record<string, any> }
   ): Promise<Response | undefined> {
     return this.executeApiCall(path, { method: 'POST', ...options, endpointName: 'custom' });
   }
@@ -392,7 +390,7 @@ export class SdkBuilder {
    */
   public async get<Params extends Record<string, any>, Response>(
     path: string,
-    options: Omit<ExecuteApiCallOptions<Params>, 'method' | 'endpointName'>
+    options: Omit<ExecuteApiCallOptions<Params>, 'method' | 'endpointName'> & { body?: Params }
   ): Promise<Response | undefined> {
     return this.executeApiCall(path, { method: 'GET', ...options, endpointName: 'custom' });
   }
