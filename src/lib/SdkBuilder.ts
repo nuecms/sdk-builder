@@ -18,7 +18,7 @@ export interface SdkBuilderConfig {
   validateStatus?: (status: number) => boolean;
   retryDelay?: number;
   maxRetries?: number;
-  method?: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   baseUrl: string;
   defaultHeaders?: Record<string, string>;
   timeout?: number;
