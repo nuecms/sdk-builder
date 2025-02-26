@@ -46,6 +46,8 @@ interface ExecuteApiCallOptions<Params> {
   dataType?: string;
   contentType?: string;
   stringifyBody?: (body: Record<string, any>) => string;
+  retryDelay?: number;
+  maxRetries?: number;
 }
 
 type Params = Record<string, any>;
@@ -216,11 +218,15 @@ export class SdkBuilder {
     options: ExecuteApiCallOptions<Params>
   ): Promise<Response | undefined> {
 
-    let { method, endpointName, dataType, contentType, stringifyBody, headers: initHeaders, extParams } = options;
+    let { method, endpointName, dataType, contentType, stringifyBody, headers: initHeaders, extParams, retryDelay, maxRetries } = options;
     let headers = { ...this.defaultHeaders, ...initHeaders };
     stringifyBody = stringifyBody || ((body: Record<string, any>) => new URLSearchParams(body).toString());
     let body = (options.body ?? {}) as Params;
     let params = (options.params ?? {}) as Record<string, any>;
+
+    // Use options retryDelay and maxRetries if provided, otherwise use instance values
+    const usedRetryDelay = retryDelay ?? this.retryDelay;
+    const usedMaxRetries = maxRetries ?? this.maxRetries;
 
     // hooks for intercepting requests
     if (this.requestInterceptor) {
@@ -281,7 +287,7 @@ export class SdkBuilder {
       body, headers, path, method, endpointName, url, params, config: this.config, extParams
     }
 
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= usedMaxRetries; attempt++) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
@@ -325,8 +331,8 @@ export class SdkBuilder {
           return responseData;
         }
         // sever error
-        if (this.retryStatus(response.status) && attempt < this.maxRetries) {
-          await this.delay(this.retryDelay);
+        if (this.retryStatus(response.status) && attempt < usedMaxRetries) {
+          await this.delay(usedRetryDelay);
           continue;
         }
 
@@ -335,9 +341,9 @@ export class SdkBuilder {
           throw new RequestError(`HTTP Error: ${response.status} ${response.statusText} ${s}`);
         }
       } catch (error) {
-        if (this.maxRetries && attempt >= this.maxRetries) {
+        if (usedMaxRetries && attempt >= usedMaxRetries) {
           throw new Error(
-            `Request failed after ${this.maxRetries + 1} attempts: ${(error as Error).message}`
+            `Request failed after ${usedMaxRetries + 1} attempts: ${(error as Error).message}`
           );
         }
         if ((error as Error).name === 'AbortError') {
@@ -347,7 +353,7 @@ export class SdkBuilder {
         if (error instanceof RequestError) {
           throw error;
         }
-        await this.delay(this.retryDelay);
+        await this.delay(usedRetryDelay);
       }
     }
   }
