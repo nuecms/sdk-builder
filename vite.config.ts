@@ -16,7 +16,7 @@ export default defineConfig({
       }
     },
     rollupOptions: {
-      external: ['ioredis', 'cross-fetch'], // Mark dependencies as external
+      external: ['ioredis', 'cross-fetch', 'util'], // Mark dependencies as external
       output: {
         globals: {
           'cross-fetch': 'fetch',           // Use fetch in the browser

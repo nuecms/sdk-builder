@@ -1,5 +1,7 @@
 import { CacheProvider } from '../cache/cacheProvider';
 import { ResponseTransformer } from '../transformers/responseTransformer';
+import { debuglog } from 'util';
+const debug = debuglog('sdk-builder');
 
 export interface FetchContext<Params = Record<string, any>> {
   body: Params;
@@ -48,6 +50,7 @@ interface ExecuteApiCallOptions<Params> {
   stringifyBody?: (body: Record<string, any>) => string;
   retryDelay?: number;
   maxRetries?: number;
+  endPoint?: string;
 }
 
 type Params = Record<string, any>;
@@ -223,6 +226,7 @@ export class SdkBuilder {
     stringifyBody = stringifyBody || ((body: Record<string, any>) => new URLSearchParams(body).toString());
     let body = (options.body ?? {}) as Params;
     let params = (options.params ?? {}) as Record<string, any>;
+    let baseUrl = options.endPoint || this.baseUrl;
 
     // Use options retryDelay and maxRetries if provided, otherwise use instance values
     const usedRetryDelay = retryDelay ?? this.retryDelay;
@@ -252,7 +256,7 @@ export class SdkBuilder {
 
     headers = await this.resolveHeaders(headers, { ...body, ...params });
     const subUrl = await this.resolvePath(path, body, method, params);
-    const url = this.baseUrl + subUrl;
+    const url = baseUrl + subUrl;
 
     const requestOptions: any = {
       method,
