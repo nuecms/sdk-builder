@@ -437,6 +437,21 @@ export class SdkBuilder {
   ): Promise<string> {
     let url = path;
 
+    // Format path parameters like /v2/checkout/orders/{order_id}/capture
+    url = url.replace(/{([^}]+)}/g, (match, key) => {
+      if (body[key] !== undefined) {
+        const value = body[key];
+        delete body[key];
+        return encodeURIComponent(value);
+      }
+      if (params[key] !== undefined) {
+        const value = params[key];
+        delete params[key];
+        return encodeURIComponent(value);
+      }
+      return match;
+    });
+
     const origialParams = { ...this.config, ...body };
 
     const holders = { ...this.placeholders };
@@ -470,6 +485,7 @@ export class SdkBuilder {
     }
     return url;
   }
+
   // Delay function for retries
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
