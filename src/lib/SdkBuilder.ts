@@ -221,9 +221,10 @@ export class SdkBuilder {
     options: ExecuteApiCallOptions<Params>
   ): Promise<Response | undefined> {
 
-    let { method, endpointName, dataType, contentType, stringifyBody, headers: initHeaders, extParams, retryDelay, maxRetries } = options;
+    let { method, endpointName, dataType, contentType, headers: initHeaders, extParams, retryDelay, maxRetries } = options;
     let headers = { ...this.defaultHeaders, ...initHeaders };
-    stringifyBody = stringifyBody || ((body: Record<string, any>) => new URLSearchParams(body).toString());
+    const defaultStringify = (body: Record<string, any>) => new URLSearchParams(body).toString();
+    let stringifyBody = options.stringifyBody || defaultStringify;
     let body = (options.body ?? {}) as Params;
     let params = (options.params ?? {}) as Record<string, any>;
     let baseUrl = options.endPoint || this.baseUrl;
@@ -254,6 +255,9 @@ export class SdkBuilder {
       }
       if (modifiedReq.contentType) {
         contentType = modifiedReq.contentType;
+      }
+      if (modifiedReq.stringifyBody) {
+        stringifyBody = modifiedReq.stringifyBody;
       }
     }
 
