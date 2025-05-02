@@ -252,6 +252,9 @@ export class SdkBuilder {
       if (modifiedReq.path) {
         path = modifiedReq.path;
       }
+      if (modifiedReq.contentType) {
+        contentType = modifiedReq.contentType;
+      }
     }
 
     headers = await this.resolveHeaders(headers, { ...body, ...params });
