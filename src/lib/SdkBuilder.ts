@@ -201,14 +201,14 @@ export class SdkBuilder {
     return req;
   }
   // Handle authentication errors
-  private async handleAuthError(endpointName: string, body: Record<string, any>, params: Record<string, any>) {
+  private async handleAuthError(path: string, options: ExecuteApiCallOptions<Params>) {
     if (this.authenticate) {
       try {
         // Attempt to re-authenticate
         const config = await this.authenticate();
         this.enhanceConfig(config); // Update placeholders with new token
         // Retry the original request with updated placeholders
-        return this.callApi(endpointName, body, params);
+        return this.executeApiCall(path, options);
       } catch (error: any) {
         throw new Error('Re-authentication failed: ' + error.message);
       }
@@ -220,7 +220,7 @@ export class SdkBuilder {
     path: string,
     options: ExecuteApiCallOptions<Params>
   ): Promise<Response | undefined> {
-
+    let opath = path;
     let { method, endpointName, dataType, contentType, headers: initHeaders, extParams, retryDelay, maxRetries } = options;
     let headers = { ...this.defaultHeaders, ...initHeaders };
     const defaultStringify = (body: Record<string, any>) => new URLSearchParams(body).toString();
@@ -310,7 +310,7 @@ export class SdkBuilder {
         // Check for non-2xx responses
         if (this.authCheckStatus(response.status, response, fetchContext)) {
           // Handle authentication error (401 Unauthorized)
-          return this.handleAuthError(endpointName, body, params) as unknown as Response | undefined;
+          return this.handleAuthError(opath, options) as unknown as Response | undefined;
         }
 
         if(this.validateStatus(response.status)) {
